@@ -150,6 +150,48 @@ client.on("interactionCreate", async interaction => {
 
 client.on("messageCreate", async message => {
 
+        // FUN COMMAND: !mutte
+
+    if (message.author.bot) return;
+
+
+    if (message.content.startsWith("!mutte")) {
+
+
+        const allowedRole = "1506580506748125284";
+        const allowedUser = "1221391460860035093";
+
+
+        const hasPermission =
+            message.author.id === allowedUser ||
+            message.member.roles.cache.has(allowedRole);
+
+
+
+        if (!hasPermission) return;
+
+
+
+        const user = message.mentions.users.first();
+
+
+
+        if (!user) {
+
+            return message.reply(
+                "❌ Please mention a user."
+            );
+
+        }
+
+
+
+        await message.reply(
+            `${user} has been mutted for an undefinied amount of time.`
+        );
+
+
+    }
 
     if (message.author.bot) return;
 
