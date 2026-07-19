@@ -44,7 +44,13 @@ module.exports = {
                 .setDescription("Seconds")
                 .setRequired(true)
                 .setMinValue(0)
-        ),
+        )
+        .addStringOption(option =>
+    option
+        .setName("reason")
+        .setDescription("Reason for the mute")
+        .setRequired(true)
+),
 
 
     async execute(interaction) {
@@ -73,6 +79,7 @@ module.exports = {
         const hours = interaction.options.getInteger("hours");
         const minutes = interaction.options.getInteger("minutes");
         const seconds = interaction.options.getInteger("seconds");
+        const reason = interaction.options.getString("reason");
 
 
 
@@ -100,15 +107,15 @@ module.exports = {
 
 
         await member.timeout(
-            duration,
-            `Muted by ${interaction.user.tag}`
-        );
+    duration,
+    `${reason} | Muted by ${interaction.user.tag}`
+);
 
 
 
         await interaction.reply({
             content:
-                ` ${user} has been muted for ${days}d ${hours}h ${minutes}m ${seconds}s.`
+    ` ${user} has been muted for ${days}d ${hours}h ${minutes}m ${seconds}s.\nReason: ${reason}`
         });
 
     }
