@@ -1,8 +1,8 @@
-module.exports = {
-    GUILD_ID: "1430400192921735170",
+const OFFICER_ROLES = [
+    "1430406691987394682",
+    "1430405883849867294"
+];
 
-    OFFICER_ROLES: [
-        "1430406691987394682",
-        "1430405883849867294"
-    ]
+module.exports = {
+    OFFICER_ROLES
 };

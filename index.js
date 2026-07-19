@@ -159,10 +159,9 @@ client.on("messageCreate", async message => {
 
 
     const hasPermission =
-        message.member.roles.cache.some(role =>
-            OFFICER_ROLES.includes(role.id)
-        ) ||
-        message.member.roles.cache.has("1430405883849867294");
+    message.member.roles.cache.some(role =>
+        OFFICER_ROLES.includes(role.id)
+    );
 
 
     if (!hasPermission) return;
