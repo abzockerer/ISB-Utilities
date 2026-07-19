@@ -154,7 +154,7 @@ client.on("messageCreate", async message => {
 
     if (message.author.bot) return;
 
-
+    const mutteCooldown = new Map();
     if (message.content.startsWith("!mutte")) {
 
 
@@ -169,6 +169,28 @@ client.on("messageCreate", async message => {
 
 
         if (!hasPermission) return;
+
+        const cooldown = 180; // Sekunden
+
+const lastUse = mutteCooldown.get(message.author.id);
+
+if (lastUse) {
+
+    const elapsed = (Date.now() - lastUse) / 1000;
+
+    if (elapsed < cooldown) {
+
+        const remaining = Math.ceil(cooldown - elapsed);
+
+        return message.reply(
+            `Command is on cooldown for ${remaining} seconds.`
+        );
+
+    }
+
+}
+
+mutteCooldown.set(message.author.id, Date.now());
 
 
 
