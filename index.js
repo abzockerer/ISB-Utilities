@@ -187,7 +187,7 @@ client.on("messageCreate", async message => {
 
 
         await message.reply(
-            `${user} has been mutted for an undefinied amount of time.`
+            `${user} has been mutted for an undefined amount of time.`
         );
 
 
