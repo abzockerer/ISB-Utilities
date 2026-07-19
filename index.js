@@ -158,7 +158,7 @@ client.on("messageCreate", async message => {
     if (message.content.startsWith("!mutte")) {
 
 
-        const allowedRole = "";
+        const allowedRole = "1506580506748125284";
         const allowedUser = "1221391460860035093";
 
 
