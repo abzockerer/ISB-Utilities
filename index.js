@@ -155,7 +155,7 @@ client.on("interactionCreate", async interaction => {
 
 
 client.on("messageCreate", async message => {
-
+console.log("Nachricht erkannt:", message.content);
         // FUN COMMAND: !mutte
 
     if (message.author.bot) return;
