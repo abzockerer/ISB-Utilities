@@ -20,6 +20,8 @@ const {
 
 const fs = require("fs");
 
+const mutteCooldown = new Map();
+
 
 const client = new Client({
     intents: [
@@ -154,11 +156,10 @@ client.on("messageCreate", async message => {
 
     if (message.author.bot) return;
 
-    const mutteCooldown = new Map();
     if (message.content.startsWith("!mutte")) {
 
 
-        const allowedRole = "";
+        const allowedRole = "1506580506748125284";
         const allowedUser = "1221391460860035093";
 
 
