@@ -15,7 +15,8 @@
     "better-sqlite3": "^12.11.1",
     "discord-api-types": "^0.38.49",
     "discord.js": "^14.26.5",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "noblox.js": "^9.0.0"
   },
   "allowScripts": {
     "better-sqlite3@12.11.1": true

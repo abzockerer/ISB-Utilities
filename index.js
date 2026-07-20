@@ -11,6 +11,7 @@ const {
 const { processEvent } = require("./utils/eventProcessor");
 const { getSection, getUserIds } = require("./utils/eventParser");
 const { OFFICER_ROLES } = require("./config/config");
+const { loginRoblox } = require("./utils/roblox");
 
 const {
     Client,
@@ -48,7 +49,9 @@ for (const file of commandFiles) {
 }
 
 
-client.once("ready", () => {
+client.once("ready", async () => {
+
+    await loginRoblox();
 
     console.log(`✅ ${client.user.tag} ist online!`);
 
@@ -155,6 +158,28 @@ client.on("messageCreate", async message => {
         // FUN COMMAND: !mutte
 
     if (message.author.bot) return;
+
+    if (message.content.startsWith("!newcomer")) {
+
+    const newcomer =
+        require("./commands/newcomer");
+
+    await newcomer.execute(message);
+
+    return;
+
+}
+
+    if (message.content.startsWith("!newcomer")) {
+
+    const newcomer =
+        require("./commands/newcomer");
+
+    await newcomer.execute(message);
+
+    return;
+
+}
 
     if (message.content.startsWith("!mutte")) {
 
