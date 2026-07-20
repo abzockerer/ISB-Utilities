@@ -162,27 +162,9 @@ client.on("messageCreate", async message => {
 
     await newcomerHandler(message);
 
-    if (message.content.startsWith("!newcomer")) {
 
-    const newcomer =
-        require("./commands/newcomer");
 
-    await newcomer.execute(message);
 
-    return;
-
-}
-
-    if (message.content.startsWith("!newcomer")) {
-
-    const newcomer =
-        require("./commands/newcomer");
-
-    await newcomer.execute(message);
-
-    return;
-
-}
 
     if (message.content.startsWith("!mutte")) {
 
