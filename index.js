@@ -12,6 +12,7 @@ const { processEvent } = require("./utils/eventProcessor");
 const { getSection, getUserIds } = require("./utils/eventParser");
 const { OFFICER_ROLES } = require("./config/config");
 const { loginRoblox } = require("./utils/roblox");
+const newcomerHandler = require("./handlers/newcomer");
 
 const {
     Client,
@@ -158,6 +159,8 @@ client.on("messageCreate", async message => {
         // FUN COMMAND: !mutte
 
     if (message.author.bot) return;
+
+    await newcomerHandler(message);
 
     if (message.content.startsWith("!newcomer")) {
 
