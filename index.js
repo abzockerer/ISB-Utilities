@@ -8,11 +8,15 @@ const {
     addEventLog
 } = require("./utils/databaseManager");
 
+
+
 const { processEvent } = require("./utils/eventProcessor");
 const { getSection, getUserIds } = require("./utils/eventParser");
-const { OFFICER_ROLES } = require("./config/config");
+const { OFFICER_ROLES, GUILD_ID } = require("./config/config");
 const { loginRoblox } = require("./utils/roblox");
 const newcomerHandler = require("./handlers/newcomer");
+const { syncUsers } = require("./utils/userSync");
+const { startPresenceTracker } = require("./utils/robloxPresence");
 
 const {
     Client,
@@ -53,6 +57,17 @@ for (const file of commandFiles) {
 client.once("ready", async () => {
 
     await loginRoblox();
+
+    const guild = client.guilds.cache.get(process.env.GUILD_ID);
+
+    if (!guild) {
+        console.log("❌ Server nicht gefunden!");
+        return;
+    }
+
+    await syncUsers(guild);
+
+    startPresenceTracker(client);
 
     console.log(`✅ ${client.user.tag} ist online!`);
 
@@ -152,7 +167,22 @@ client.on("interactionCreate", async interaction => {
 
 
 
+client.on("guildMemberAdd", async member => {
 
+    if(member.user.bot) return;
+
+
+    db.prepare(`
+        INSERT OR IGNORE INTO users (id)
+        VALUES (?)
+    `).run(member.id);
+
+
+    console.log(
+        `✅ Neuer Nutzer gespeichert: ${member.user.tag}`
+    );
+
+});
 
 client.on("messageCreate", async message => {
 console.log("Nachricht erkannt:", message.content);
@@ -363,5 +393,19 @@ mutteCooldown.set(message.author.id, Date.now());
 });
 
 
+client.on("guildMemberAdd", async member => {
+
+    if (member.user.bot) return;
+
+    const insert = db.prepare(`
+        INSERT OR IGNORE INTO users (id)
+        VALUES (?)
+    `);
+
+    insert.run(member.id);
+
+    console.log(`➕ Neuer Nutzer synchronisiert: ${member.user.tag}`);
+
+});
 
 client.login(process.env.TOKEN);

@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "@discordjs/rest": "^2.6.1",
+    "axios": "^1.18.1",
     "better-sqlite3": "^12.11.1",
     "discord-api-types": "^0.38.49",
     "discord.js": "^14.26.5",

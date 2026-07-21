@@ -21,6 +21,46 @@ db.prepare(`
     )
 `).run();
 
+db.prepare(`
+CREATE TABLE IF NOT EXISTS presence_logs (
+    discordId TEXT PRIMARY KEY,
+    robloxId INTEGER NOT NULL,
+    status TEXT DEFAULT 'offline',
+    joinMessageId TEXT,
+    lastChange INTEGER DEFAULT 0
+)
+`).run();
+
+try {
+    db.prepare(`
+        ALTER TABLE users
+        ADD COLUMN discordName TEXT
+    `).run();
+} catch (error) {}
+
+try {
+    db.prepare(`
+        ALTER TABLE users
+        ADD COLUMN robloxName TEXT
+    `).run();
+} catch (error) {}
+
+try {
+    db.prepare(`
+        ALTER TABLE users
+        ADD COLUMN robloxId INTEGER
+    `).run();
+} catch (error) {}
+
+try {
+    db.prepare(`
+        ALTER TABLE users
+        ADD COLUMN robloxId INTEGER
+    `).run();
+} catch (error) {
+    // Spalte existiert bereits
+}
+
 try {
     db.prepare(`
         ALTER TABLE users

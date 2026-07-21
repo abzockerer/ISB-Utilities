@@ -1,4 +1,5 @@
 const noblox = require("noblox.js");
+const axios = require("axios");
 
 const {
     ROBLOX_GROUP_ID
@@ -175,11 +176,36 @@ async function getAccountAge(userId) {
 
 }
 
+async function getPresence(userId) {
+
+    try {
+
+        const response = await axios.post(
+            "https://presence.roblox.com/v1/presence/users",
+            {
+                userIds: [userId]
+            }
+        );
+
+        return response.data.userPresences[0];
+
+    } catch (err) {
+
+        console.error("Presence Error:", err.message);
+
+        return null;
+
+    }
+
+}
+
 module.exports = {
+
     loginRoblox,
     getRobloxUserId,
-    isInGroup,
     getJoinRequest,
     acceptJoinRequest,
-    getAccountAge
+    getAccountAge,
+    getPresence
+
 };
