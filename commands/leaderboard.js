@@ -178,7 +178,7 @@ module.exports = {
 
 
                 await interaction.editReply(
-                    "❌ Fehler beim Laden des Leaderboards."
+                    "❌ There was a error."
                 );
 
 
@@ -188,7 +188,7 @@ module.exports = {
                 await interaction.reply({
 
                     content:
-                        "❌ Fehler beim Laden des Leaderboards.",
+                        "❌ There was a error.",
 
                     ephemeral:true
 
