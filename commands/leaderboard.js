@@ -8,16 +8,13 @@ module.exports = {
         .setName("leaderboard")
         .setDescription("Shows the event leaderboard."),
 
+
     async execute(interaction) {
 
         try {
 
-            // Antwort reservieren
+            // SOFORT antworten, bevor irgendetwas lange dauert
             await interaction.deferReply();
-
-
-            // Alle Mitglieder laden
-            await interaction.guild.members.fetch();
 
 
             const users = db.prepare(
@@ -29,15 +26,19 @@ module.exports = {
             let attended = [];
 
 
+            // bereits geladene Mitglieder benutzen
+            const members = interaction.guild.members.cache;
+
+
+
             for (const user of users) {
 
 
-                const member =
-                    interaction.guild.members.cache.get(user.id);
+                const member = members.get(user.id);
 
 
-                // Nutzer nicht mehr auf dem Server ignorieren
-                if (!member) continue;
+                if (!member)
+                    continue;
 
 
 
@@ -82,12 +83,12 @@ module.exports = {
 
 
             hosted.sort(
-                (a, b) => b.amount - a.amount
+                (a,b)=>b.amount-a.amount
             );
 
 
             attended.sort(
-                (a, b) => b.amount - a.amount
+                (a,b)=>b.amount-a.amount
             );
 
 
@@ -102,29 +103,16 @@ module.exports = {
 
 
 
-            if (hosted.length === 0) {
+            hosted
+            .slice(0,5)
+            .forEach((user,index)=>{
 
 
                 response +=
-                    "No Data\n";
+                `${index+1}. ${user.name} - ${user.amount} Events hosted\n`;
 
 
-            } else {
-
-
-                hosted
-                    .slice(0, 5)
-                    .forEach((user, index) => {
-
-
-                        response +=
-                            `${index + 1}. ${user.name} - ${user.amount} Events hosted\n`;
-
-
-                    });
-
-
-            }
+            });
 
 
 
@@ -133,29 +121,16 @@ module.exports = {
 
 
 
-            if (attended.length === 0) {
+            attended
+            .slice(0,5)
+            .forEach((user,index)=>{
 
 
                 response +=
-                    "No Data\n";
+                `${index+1}. ${user.name} - ${user.amount} Events attended\n`;
 
 
-            } else {
-
-
-                attended
-                    .slice(0, 5)
-                    .forEach((user, index) => {
-
-
-                        response +=
-                            `${index + 1}. ${user.name} - ${user.amount} Events attended\n`;
-
-
-                    });
-
-
-            }
+            });
 
 
 
@@ -163,7 +138,7 @@ module.exports = {
 
 
 
-        } catch (error) {
+        } catch(error) {
 
 
             console.error(
@@ -172,28 +147,11 @@ module.exports = {
             );
 
 
-
-            // Verhindert 40060 Fehler
             if (interaction.deferred) {
 
-
                 await interaction.editReply(
-                    "❌ There was a error."
+                    "❌ Fehler beim Laden des Leaderboards."
                 );
-
-
-            } else if (!interaction.replied) {
-
-
-                await interaction.reply({
-
-                    content:
-                        "❌ There was a error.",
-
-                    ephemeral:true
-
-                });
-
 
             }
 
