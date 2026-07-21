@@ -250,7 +250,7 @@ mutteCooldown.set(message.author.id, Date.now());
 
 
         await message.reply(
-            `${user} has been mutted for an undefined amount of time.`
+            `${user} has been mutted for an undefined amount of time. I am very sorry if AsheyOfc abused this command again..`
         );
 
 
