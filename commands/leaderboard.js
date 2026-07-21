@@ -10,88 +10,196 @@ module.exports = {
 
     async execute(interaction) {
 
-        // Alle Mitglieder laden
-        await interaction.guild.members.fetch();
+        try {
 
-        const users = db.prepare(
-            "SELECT * FROM users"
-        ).all();
+            // Antwort reservieren
+            await interaction.deferReply();
 
-        let hosted = [];
-        let attended = [];
 
-        for (const user of users) {
+            // Alle Mitglieder laden
+            await interaction.guild.members.fetch();
 
-            try {
 
-                const member = await interaction.guild.members.fetch(user.id);
+            const users = db.prepare(
+                "SELECT * FROM users"
+            ).all();
 
-                const isOfficer = member.roles.cache.some(role =>
-                    OFFICER_ROLES.includes(role.id)
-                );
+
+            let hosted = [];
+            let attended = [];
+
+
+            for (const user of users) {
+
+
+                const member =
+                    interaction.guild.members.cache.get(user.id);
+
+
+                // Nutzer nicht mehr auf dem Server ignorieren
+                if (!member) continue;
+
+
+
+                const isOfficer =
+                    member.roles.cache.some(role =>
+                        OFFICER_ROLES.includes(role.id)
+                    );
+
+
 
                 if (isOfficer) {
 
+
                     hosted.push({
+
                         name: member.displayName,
-                        amount: user.hostedEvents || 0
+
+                        amount:
+                            user.hostedEvents || 0
+
                     });
+
 
                 } else {
 
+
                     attended.push({
+
                         name: member.displayName,
-                        amount: user.attendedEvents || 0
+
+                        amount:
+                            user.attendedEvents || 0
+
                     });
+
 
                 }
 
-            } catch {
-                // Benutzer nicht mehr auf dem Server ignorieren
+
             }
 
-        }
 
-        hosted.sort((a, b) => b.amount - a.amount);
-        attended.sort((a, b) => b.amount - a.amount);
 
-        let response = "🏆 **Leaderboard**\n\n";
+            hosted.sort(
+                (a, b) => b.amount - a.amount
+            );
 
-        response += "**Hosted Events:**\n";
 
-        if (hosted.length === 0) {
+            attended.sort(
+                (a, b) => b.amount - a.amount
+            );
 
-            response += "No Data\n";
 
-        } else {
 
-            hosted.slice(0, 5).forEach((user, index) => {
+            let response =
+                "🏆 **Leaderboard**\n\n";
 
-                response +=
-                    `${index + 1}. ${user.name} - ${user.amount} Events hosted\n`;
 
-            });
 
-        }
+            response +=
+                "**Hosted Events:**\n";
 
-        response += "\n**Attended Events:**\n";
 
-        if (attended.length === 0) {
 
-            response += "No Data\n";
+            if (hosted.length === 0) {
 
-        } else {
-
-            attended.slice(0, 5).forEach((user, index) => {
 
                 response +=
-                    `${index + 1}. ${user.name} - ${user.amount} Events attended\n`;
+                    "No Data\n";
 
-            });
+
+            } else {
+
+
+                hosted
+                    .slice(0, 5)
+                    .forEach((user, index) => {
+
+
+                        response +=
+                            `${index + 1}. ${user.name} - ${user.amount} Events hosted\n`;
+
+
+                    });
+
+
+            }
+
+
+
+            response +=
+                "\n**Attended Events:**\n";
+
+
+
+            if (attended.length === 0) {
+
+
+                response +=
+                    "No Data\n";
+
+
+            } else {
+
+
+                attended
+                    .slice(0, 5)
+                    .forEach((user, index) => {
+
+
+                        response +=
+                            `${index + 1}. ${user.name} - ${user.amount} Events attended\n`;
+
+
+                    });
+
+
+            }
+
+
+
+            await interaction.editReply(response);
+
+
+
+        } catch (error) {
+
+
+            console.error(
+                "Leaderboard Fehler:",
+                error
+            );
+
+
+
+            // Verhindert 40060 Fehler
+            if (interaction.deferred) {
+
+
+                await interaction.editReply(
+                    "❌ Fehler beim Laden des Leaderboards."
+                );
+
+
+            } else if (!interaction.replied) {
+
+
+                await interaction.reply({
+
+                    content:
+                        "❌ Fehler beim Laden des Leaderboards.",
+
+                    ephemeral:true
+
+                });
+
+
+            }
+
 
         }
 
-        await interaction.reply(response);
 
     }
 
