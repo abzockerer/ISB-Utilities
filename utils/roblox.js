@@ -46,12 +46,10 @@ async function isInGroup(userId) {
         const groups =
             await noblox.getGroups(userId);
 
-
         return groups.some(
             group =>
                 group.Id === ROBLOX_GROUP_ID
         );
-
 
     } catch {
 
@@ -72,16 +70,13 @@ async function getJoinRequest(userId) {
                 ROBLOX_GROUP_ID
             );
 
-
         const requests =
             response.data || response;
-
 
         return requests.find(
             request =>
                 request.requester.userId === userId
         );
-
 
     } catch (error) {
 
@@ -108,6 +103,8 @@ async function acceptJoinRequest(request) {
 
 }
 
+
+
 async function getAccountAge(userId) {
 
     try {
@@ -115,27 +112,32 @@ async function getAccountAge(userId) {
         const info =
             await noblox.getPlayerInfo(userId);
 
+        console.log("PlayerInfo:", info);
+
+        if (!info.created) {
+
+            console.log("❌ Feld 'created' nicht gefunden.");
+
+            return null;
+
+        }
 
         const created =
-            new Date(info.joinDate);
-
+            new Date(info.created);
 
         const age =
             Math.floor(
-                (Date.now() - created.getTime())
-                /
+                (Date.now() - created.getTime()) /
                 (1000 * 60 * 60 * 24)
             );
 
-
         return age;
-
 
     } catch (error) {
 
         console.error(
             "Account age error:",
-            error.message
+            error
         );
 
         return null;
@@ -145,36 +147,6 @@ async function getAccountAge(userId) {
 }
 
 
-async function getAccountAge(userId) {
-
-    try {
-
-        const created =
-            await noblox.getPlayerInfo(userId);
-
-
-        const createdDate =
-            new Date(created.joinDate);
-
-
-        const age =
-            Math.floor(
-                (Date.now() - createdDate)
-                /
-                (1000 * 60 * 60 * 24)
-            );
-
-
-        return age;
-
-
-    } catch {
-
-        return null;
-
-    }
-
-}
 
 async function getPresence(userId) {
 
@@ -191,13 +163,18 @@ async function getPresence(userId) {
 
     } catch (err) {
 
-        console.error("Presence Error:", err.message);
+        console.error(
+            "Presence Error:",
+            err.message
+        );
 
         return null;
 
     }
 
 }
+
+
 
 module.exports = {
 
