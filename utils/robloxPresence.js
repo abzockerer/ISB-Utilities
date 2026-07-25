@@ -10,23 +10,26 @@ const {
     OFFICER_ROLES
 } = require("../config/config");
 
-
 const GAME_ID = 4238077359;
 const LOG_CHANNEL = "1476780414059151362";
-
 
 const RANKS = {
 
     "1430405883849867294": "HiCOM",
     "1482858985559298058": "Major",
     "1437914178479325225": "Captain",
-    "1482858660609921277": "Lieutenant",
-    "1521010747155550328": "CET Overseer",
-    "1519575872250843246": "CET Officer"
+    "1482858660609921277": "Lieutenant"
 
 };
 
+const KILLZONES = {
 
+    "1430405883849867294": "4 Studs",
+    "1482858985559298058": "3.5 Studs",
+    "1437914178479325225": "3 Studs",
+    "1482858660609921277": "2.5 Studs"
+
+};
 
 function getRank(member) {
 
@@ -42,34 +45,35 @@ function getRank(member) {
 
 }
 
+function getKillzone(member) {
 
+    for (const role of member.roles.cache.values()) {
 
+        if (KILLZONES[role.id]) {
+            return KILLZONES[role.id];
+        }
 
+    }
+
+    return "Unknown";
+
+}
 
 async function startPresenceTracker(client) {
 
-
 setInterval(async () => {
 
-
     try {
-
 
         const guild =
             client.guilds.cache.get(process.env.GUILD_ID);
 
-
         if (!guild) return;
-
 
         const channel =
             guild.channels.cache.get(LOG_CHANNEL);
 
-
         if (!channel) return;
-
-
-
 
         const officers =
             guild.members.cache.filter(member =>
@@ -78,19 +82,15 @@ setInterval(async () => {
                 )
             );
 
-
-
         const robloxIds = [];
         const officerData = [];
+
         console.log(
-    "Officers erkannt:",
-    officers.map(o => o.user.username)
-);
-
-
+            "Officers erkannt:",
+            officers.map(o => o.user.username)
+        );
 
         for (const member of officers.values()) {
-
 
             const userData = db.prepare(`
                 SELECT robloxId, robloxName
@@ -99,37 +99,25 @@ setInterval(async () => {
             `).get(member.id);
 
             console.log(
-    "DB USER:",
-    member.user.username,
-    userData
-);
-
-
+                "DB USER:",
+                member.user.username,
+                userData
+            );
 
             if (!userData || !userData.robloxId) {
-
                 continue;
-
             }
 
-
-
             robloxIds.push(userData.robloxId);
-
 
             officerData.push({
                 member,
                 robloxId: userData.robloxId
             });
 
-
         }
 
-
-
         if (robloxIds.length === 0) return;
-
-
 
         const presence =
             await axios.post(
@@ -139,33 +127,25 @@ setInterval(async () => {
                 }
             );
 
-
-
         for (const data of officerData) {
-
 
             const member = data.member;
             const robloxId = data.robloxId;
-
-
 
             const userPresence =
                 presence.data.userPresences.find(
                     p => p.userId == robloxId
                 );
-                console.log(
-    "ROBLOX PRESENCE:",
-    member.user.username,
-    userPresence
-);
 
-
+            console.log(
+                "ROBLOX PRESENCE:",
+                member.user.username,
+                userPresence
+            );
 
             const inGame =
                 userPresence &&
                 userPresence.placeId == GAME_ID;
-
-
 
             const old =
                 db.prepare(`
@@ -174,19 +154,11 @@ setInterval(async () => {
                     WHERE discordId = ?
                 `).get(member.id);
 
-
-
-
-
-
             // JOIN
 
             if (inGame && (!old || old.status === "offline")) {
 
-
                 const now = Date.now();
-
-
 
                 const embed =
                     new EmbedBuilder()
@@ -199,6 +171,7 @@ setInterval(async () => {
 
 `
 **Rank:** ${getRank(member)}
+**Killzone:** ${getKillzone(member)}
 
 [View Profile](https://www.roblox.com/users/${robloxId}/profile)
 
@@ -209,14 +182,10 @@ setInterval(async () => {
 
                     .setColor("Green");
 
-
-
                 const msg =
                     await channel.send({
-                        embeds:[embed]
+                        embeds: [embed]
                     });
-
-
 
                 db.prepare(`
                     INSERT OR REPLACE INTO presence_logs
@@ -237,21 +206,21 @@ setInterval(async () => {
                     now
                 );
 
-
             }
-
-
-
-
 
             // LEAVE
 
             if (!inGame && old && old.status === "online") {
 
-
                 const now = Date.now();
 
+                const onlineSeconds = Math.floor((now - old.lastChange) / 1000);
 
+const hours = Math.floor(onlineSeconds / 3600);
+const minutes = Math.floor((onlineSeconds % 3600) / 60);
+const seconds = onlineSeconds % 60;
+
+const onlineTime = `${hours}h ${minutes}m ${seconds}s`;
 
                 const leaveEmbed =
                     new EmbedBuilder()
@@ -264,66 +233,57 @@ setInterval(async () => {
 
 `
 **Rank:** ${getRank(member)}
+**Killzone:** ${getKillzone(member)}
 
 [View Profile](https://www.roblox.com/users/${old.robloxId}/profile)
 
 **Status:** 🔴 Offline since <t:${Math.floor(now/1000)}:R>
+**Online time:** ${onlineTime}
 `
 
-                    )
+)
 
                     .setColor("Red");
 
-
-
                 await channel.send({
-                    embeds:[leaveEmbed]
+                    embeds: [leaveEmbed]
                 });
 
-
-
                 try {
-
 
                     const oldMessage =
                         await channel.messages.fetch(
                             old.joinMessageId
                         );
 
-
-
                     const oldEmbed =
                         EmbedBuilder.from(
                             oldMessage.embeds[0]
                         );
 
-
-
                     oldEmbed.setDescription(
 
 `
+
 **Rank:** ${getRank(member)}
+**Killzone:** ${getKillzone(member)}
 
 [View Profile](https://www.roblox.com/users/${old.robloxId}/profile)
 
 **Status:** 🔴 Offline since <t:${Math.floor(now/1000)}:R>
+**Online time:** ${onlineTime}
+
 `
 
                     );
 
-
-
                     await oldMessage.edit({
-                        embeds:[
+                        embeds: [
                             oldEmbed
                         ]
                     });
 
-
-
                 } catch {}
-
-
 
                 db.prepare(`
                     UPDATE presence_logs
@@ -336,33 +296,22 @@ setInterval(async () => {
                     member.id
                 );
 
-
             }
-
 
         }
 
-
-
-
-    } catch(error) {
-
+    } catch (error) {
 
         console.error(
             "Presence Tracker Fehler:",
             error
         );
 
-
     }
 
-
-},15000);
-
+}, 15000);
 
 }
-
-
 
 module.exports = {
     startPresenceTracker
