@@ -109,32 +109,25 @@ async function getAccountAge(userId) {
 
     try {
 
-        const info = await noblox.getPlayerInfo(userId);
+        const response = await axios.get(
+            `https://users.roblox.com/v1/users/${userId}`
+        );
 
-        console.log("PLAYER INFO:", info);
+        const createdDate = new Date(response.data.created);
 
-        const created =
-            info.joinDate ||
-            info.created ||
-            info.createdAt ||
-            info.accountCreated;
-
-        console.log("CREATED:", created);
-
-        if (!created) {
-            return null;
-        }
-
-        const createdDate = new Date(created);
-
-        return Math.floor(
+        const age = Math.floor(
             (Date.now() - createdDate.getTime()) /
             (1000 * 60 * 60 * 24)
         );
 
-    } catch (err) {
+        return age;
 
-        console.error("Account age error:", err);
+    } catch (error) {
+
+        console.error(
+            "Account age error:",
+            error.response?.data || error.message
+        );
 
         return null;
 
