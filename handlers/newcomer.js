@@ -85,6 +85,9 @@ module.exports = async function newcomer(message) {
     const robloxUserId =
         await getRobloxUserId(robloxName);
 
+        console.log("ROBLOX NAME:", robloxName);
+console.log("ROBLOX USER ID:", robloxUserId);
+
 
 
     if (!robloxUserId) {

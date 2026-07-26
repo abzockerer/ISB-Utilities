@@ -85,10 +85,7 @@ setInterval(async () => {
         const robloxIds = [];
         const officerData = [];
 
-        console.log(
-            "Officers erkannt:",
-            officers.map(o => o.user.username)
-        );
+        
 
         for (const member of officers.values()) {
 
@@ -98,11 +95,7 @@ setInterval(async () => {
                 WHERE id = ?
             `).get(member.id);
 
-            console.log(
-                "DB USER:",
-                member.user.username,
-                userData
-            );
+            
 
             if (!userData || !userData.robloxId) {
                 continue;
@@ -137,11 +130,7 @@ setInterval(async () => {
                     p => p.userId == robloxId
                 );
 
-            console.log(
-                "ROBLOX PRESENCE:",
-                member.user.username,
-                userPresence
-            );
+            
 
             const inGame =
                 userPresence &&
