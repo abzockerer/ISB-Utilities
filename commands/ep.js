@@ -8,7 +8,7 @@ const ALLOWED_USER = "1221391460860035093";
 module.exports = {
 
     data: new SlashCommandBuilder()
-        .setName("addep")
+        .setName("ep")
         .setDescription("Adds or removes event points from a user.")
         .addUserOption(option =>
             option
