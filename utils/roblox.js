@@ -109,36 +109,32 @@ async function getAccountAge(userId) {
 
     try {
 
-        const info =
-            await noblox.getPlayerInfo(userId);
+        const info = await noblox.getPlayerInfo(userId);
 
-        console.log("PlayerInfo:", info);
-
-        if (!info.created) {
-
-            console.log("❌ Feld 'created' nicht gefunden.");
-
-            return null;
-
-        }
+        console.log("PLAYER INFO:", info);
 
         const created =
-            new Date(info.created);
+            info.joinDate ||
+            info.created ||
+            info.createdAt ||
+            info.accountCreated;
 
-        const age =
-            Math.floor(
-                (Date.now() - created.getTime()) /
-                (1000 * 60 * 60 * 24)
-            );
+        console.log("CREATED:", created);
 
-        return age;
+        if (!created) {
+            return null;
+        }
 
-    } catch (error) {
+        const createdDate = new Date(created);
 
-        console.error(
-            "Account age error:",
-            error
+        return Math.floor(
+            (Date.now() - createdDate.getTime()) /
+            (1000 * 60 * 60 * 24)
         );
+
+    } catch (err) {
+
+        console.error("Account age error:", err);
 
         return null;
 
