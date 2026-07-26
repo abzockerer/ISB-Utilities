@@ -12,11 +12,27 @@ const QUOTAS = {
 
 };
 
+const IGNORED_ROLES = [
+
+    "1521010747155550328",
+    "1519575872250843246",
+    "1515264619395027116",
+    "1438028232120078346",
+    "1438033595917926410"
+
+];
+
 module.exports = {
 
     data: new SlashCommandBuilder()
         .setName("quotacheck")
-        .setDescription("Checks officer event quotas."),
+        .setDescription("Checks officer event quotas.")
+        .addUserOption(option =>
+            option
+                .setName("user")
+                .setDescription("Check only one user")
+                .setRequired(false)
+        ),
 
     async execute(interaction) {
 
@@ -27,38 +43,99 @@ module.exports = {
             interaction.member.roles.cache.has("1430405883849867294");
 
         if (!hasPermission) {
+
             return interaction.reply({
                 content: "❌ You do not have permission to use this command.",
                 ephemeral: true
             });
+
         }
 
         await interaction.deferReply();
 
-        // Alle Mitglieder laden (wichtig bei größeren Servern)
         await interaction.guild.members.fetch();
 
-        const officers = [];
+        const targetUser =
+            interaction.options.getUser("user");
 
-        for (const [, member] of interaction.guild.members.cache) {
+        let officers = [];
+
+        if (targetUser) {
+
+            const member =
+                await interaction.guild.members.fetch(targetUser.id);
+
+            const ignored =
+                IGNORED_ROLES.some(roleId =>
+                    member.roles.cache.has(roleId)
+                );
+
+            if (ignored) {
+
+                return interaction.editReply(
+                    "❌ This user is ignored."
+                );
+
+            }
 
             let quota = null;
 
             for (const roleId in QUOTAS) {
 
                 if (member.roles.cache.has(roleId)) {
+
                     quota = QUOTAS[roleId];
                     break;
+
                 }
 
             }
 
-            if (quota !== null) {
+            if (quota === null) {
 
-                officers.push({
-                    member,
-                    quota
-                });
+                return interaction.editReply(
+                    "❌ This user has no quota."
+                );
+
+            }
+
+            officers.push({
+                member,
+                quota
+            });
+
+        } else {
+
+            for (const [, member] of interaction.guild.members.cache) {
+
+                const ignored =
+                    IGNORED_ROLES.some(roleId =>
+                        member.roles.cache.has(roleId)
+                    );
+
+                if (ignored) continue;
+
+                let quota = null;
+
+                for (const roleId in QUOTAS) {
+
+                    if (member.roles.cache.has(roleId)) {
+
+                        quota = QUOTAS[roleId];
+                        break;
+
+                    }
+
+                }
+
+                if (quota !== null) {
+
+                    officers.push({
+                        member,
+                        quota
+                    });
+
+                }
 
             }
 
@@ -75,7 +152,8 @@ module.exports = {
             if (!userData) {
 
                 db.prepare(`
-                    INSERT INTO users (id, hostedEvents, attendedEvents, lifetimeEvents)
+                    INSERT INTO users
+                    (id, hostedEvents, attendedEvents, lifetimeEvents)
                     VALUES (?, 0, 0, 0)
                 `).run(officer.member.id);
 
@@ -85,12 +163,16 @@ module.exports = {
 
             }
 
-            const hostedEvents = userData.hostedEvents;
-            const requiredEvents = officer.quota;
+            const hostedEvents =
+                userData.hostedEvents;
 
-            const icon = hostedEvents >= requiredEvents
-                ? "✅"
-                : "❌";
+            const requiredEvents =
+                officer.quota;
+
+            const icon =
+                hostedEvents >= requiredEvents
+                    ? "✅"
+                    : "❌";
 
             output +=
                 `${officer.member.user.username} ${icon}  //  Hosted events: ${hostedEvents}  //  Required events: ${requiredEvents}\n`;
