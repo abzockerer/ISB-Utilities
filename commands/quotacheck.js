@@ -35,6 +35,7 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        await interaction.deferReply();
 
         const hasPermission =
             interaction.member.roles.cache.some(role =>
@@ -44,16 +45,14 @@ module.exports = {
 
         if (!hasPermission) {
 
-            return interaction.reply({
-                content: "❌ You do not have permission to use this command.",
-                ephemeral: true
-            });
+            return interaction.editReply(
+    "❌ You do not have permission to use this command."
+);
 
         }
 
-        await interaction.deferReply();
 
-        await interaction.guild.members.fetch();
+        
 
         const targetUser =
             interaction.options.getUser("user");
