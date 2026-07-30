@@ -70,7 +70,7 @@ client.once("ready", async () => {
     startPresenceTracker(client);
 
     console.log(`✅ ${client.user.tag} ist online!`);
-
+    scheduleDailyCleanup(client);
 });
 
 
@@ -167,22 +167,7 @@ client.on("interactionCreate", async interaction => {
 
 
 
-client.on("guildMemberAdd", async member => {
 
-    if(member.user.bot) return;
-
-
-    db.prepare(`
-        INSERT OR IGNORE INTO users (id)
-        VALUES (?)
-    `).run(member.id);
-
-
-    console.log(
-        `✅ Neuer Nutzer gespeichert: ${member.user.tag}`
-    );
-
-});
 
 client.on("messageCreate", async message => {
 console.log("Nachricht erkannt:", message.content);
@@ -407,5 +392,109 @@ client.on("guildMemberAdd", async member => {
     console.log(`➕ Neuer Nutzer synchronisiert: ${member.user.tag}`);
 
 });
+
+const CLEANUP_CHANNEL = "1430773368080306268";
+
+const PROTECTED_MESSAGE = "1467334166160085195";
+
+const PROTECTED_ROLES = [
+    "1467012368704999455",
+    "1430405883849867294"
+];
+
+async function cleanupChannel(client) {
+
+    try {
+
+        const channel = await client.channels.fetch(CLEANUP_CHANNEL);
+
+        if (!channel || !channel.isTextBased()) return;
+
+        let lastId = null;
+
+        while (true) {
+
+            const messages = await channel.messages.fetch({
+                limit: 100,
+                before: lastId ?? undefined
+            });
+
+            if (messages.size === 0) break;
+
+            for (const message of messages.values()) {
+
+                if (message.id === PROTECTED_MESSAGE) continue;
+
+                let keep = false;
+
+try {
+
+    const member = await channel.guild.members.fetch(message.author.id);
+
+    keep = member.roles.cache.some(role =>
+        PROTECTED_ROLES.includes(role.id)
+    );
+
+} catch {
+    keep = false;
+}
+
+                if (keep) continue;
+
+                try {
+
+                    await message.delete();
+
+                } catch (err) {
+
+                    console.log(`Konnte Nachricht ${message.id} nicht löschen.`);
+
+                }
+
+            }
+
+            lastId = messages.last().id;
+
+        }
+
+        console.log("✅ Daily channel cleanup completed.");
+
+    } catch (err) {
+
+        console.error("Cleanup Error:", err);
+
+    }
+
+}
+
+function scheduleDailyCleanup(client) {
+
+    const now = new Date();
+
+    const next = new Date();
+
+    next.setHours(23, 0, 0, 0);
+
+    if (next <= now) {
+
+        next.setDate(next.getDate() + 1);
+
+    }
+
+    const delay = next.getTime() - now.getTime();
+
+    setTimeout(() => {
+
+        cleanupChannel(client);
+
+        setInterval(() => {
+
+            cleanupChannel(client);
+
+        }, 24 * 60 * 60 * 1000);
+
+    }, delay);
+
+}
 
 client.login(process.env.TOKEN);
