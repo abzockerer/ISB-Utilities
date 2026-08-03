@@ -22,6 +22,13 @@ db.prepare(`
 `).run();
 
 db.prepare(`
+    CREATE TABLE IF NOT EXISTS loggedEvents (
+        messageId TEXT PRIMARY KEY,
+        messageLink TEXT NOT NULL
+    )
+`).run();
+
+db.prepare(`
 CREATE TABLE IF NOT EXISTS presence_logs (
     discordId TEXT PRIMARY KEY,
     robloxId INTEGER NOT NULL,
@@ -52,14 +59,6 @@ try {
     `).run();
 } catch (error) {}
 
-try {
-    db.prepare(`
-        ALTER TABLE users
-        ADD COLUMN robloxId INTEGER
-    `).run();
-} catch (error) {
-    // Spalte existiert bereits
-}
 
 try {
     db.prepare(`

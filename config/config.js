@@ -19,6 +19,7 @@ const NEWCOMER_ROLES = [
 
 module.exports = {
     OFFICER_ROLES,
+    GUILD_ID,
     ROBLOX_GROUP_ID,
     NEWCOMER_ROLES
 };

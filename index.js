@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+process.env.TZ = "Europe/Berlin";
+
 const db = require("./database/database");
 
 const {
@@ -90,7 +92,11 @@ client.on("interactionCreate", async interaction => {
             const userId = interaction.customId.split("_")[3];
 
 
-            if (interaction.user.id !== userId) {
+            const canResetQuota =
+                interaction.user.id === "1221391460860035093" ||
+                interaction.member.roles.cache.has("1430405883849867294");
+
+            if (interaction.user.id !== userId || !canResetQuota) {
 
                 return interaction.reply({
                     content: "❌ Only the person who started the reset can confirm it.",
@@ -319,6 +325,25 @@ mutteCooldown.set(message.author.id, Date.now());
 
 
 
+    const saveEvent = db.transaction(() => {
+
+        const alreadyLogged = db.prepare(`
+            SELECT 1
+            FROM loggedEvents
+            WHERE messageId = ?
+            UNION
+            SELECT 1
+            FROM eventLogs
+            WHERE messageLink = ?
+            LIMIT 1
+        `).get(eventMessage.id, messageLink);
+
+        if (alreadyLogged) return false;
+
+        db.prepare(`
+            INSERT INTO loggedEvents (messageId, messageLink)
+            VALUES (?, ?)
+        `).run(eventMessage.id, messageLink);
     for (const userId of result.hostedEvents) {
 
 
@@ -356,6 +381,17 @@ mutteCooldown.set(message.author.id, Date.now());
 
 
 
+        return true;
+
+    });
+
+    const wasSaved = saveEvent();
+
+    if (!wasSaved) {
+
+        return message.reply("❌ This event has already been logged.");
+
+    }
     console.log("✅ Daten gespeichert");
 
 
@@ -483,15 +519,10 @@ function scheduleDailyCleanup(client) {
 
     const delay = next.getTime() - now.getTime();
 
-    setTimeout(() => {
+    setTimeout(async () => {
 
-        cleanupChannel(client);
-
-        setInterval(() => {
-
-            cleanupChannel(client);
-
-        }, 24 * 60 * 60 * 1000);
+        await cleanupChannel(client);
+        scheduleDailyCleanup(client);
 
     }, delay);
 

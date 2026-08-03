@@ -46,8 +46,21 @@ module.exports = {
 
             for (const event of events) {
 
-                response +=
+                const line =
                     `• ${event.eventType} — [Jump to log](${event.messageLink})\n`;
+
+                if (response.length + line.length > 1900) {
+
+                    const remaining = 1900 - response.length;
+
+                    response +=
+                        `${line.slice(0, Math.max(0, remaining - 1))}…`;
+
+                    break;
+
+                }
+
+                response += line;
 
             }
 

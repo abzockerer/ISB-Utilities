@@ -91,6 +91,9 @@ module.exports = {
 
 
 
+        const MAX_TIMEOUT_DURATION =
+            28 * 24 * 60 * 60 * 1000;
+
         if (duration <= 0) {
 
             return interaction.reply({
@@ -102,6 +105,14 @@ module.exports = {
 
 
 
+        if (duration > MAX_TIMEOUT_DURATION) {
+
+            return interaction.reply({
+                content: "❌ A mute cannot be longer than 28 days.",
+                ephemeral: true
+            });
+
+        }
         const member = await interaction.guild.members.fetch(user.id);
 
 

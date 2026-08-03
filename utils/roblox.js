@@ -65,18 +65,32 @@ async function getJoinRequest(userId) {
 
     try {
 
-        const response =
-            await noblox.getJoinRequests(
-                ROBLOX_GROUP_ID
+        let cursor = null;
+
+        do {
+
+            const response = await noblox.getJoinRequests(
+                ROBLOX_GROUP_ID,
+                "Asc",
+                100,
+                cursor
             );
 
-        const requests =
-            response.data || response;
+            const requests =
+                response.data || response;
 
-        return requests.find(
-            request =>
-                request.requester.userId === userId
-        );
+            const request = requests.find(
+                request =>
+                    request.requester.userId === userId
+            );
+
+            if (request) return request;
+
+            cursor = response.nextPageCursor;
+
+        } while (cursor);
+
+        return null;
 
     } catch (error) {
 
