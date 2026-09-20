@@ -12,6 +12,16 @@ db.prepare(`
 `).run();
 
 db.prepare(`
+    CREATE TABLE IF NOT EXISTS warnings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        moderatorId TEXT NOT NULL,
+        createdAt INTEGER NOT NULL
+    )
+`).run();
+
+db.prepare(`
     CREATE TABLE IF NOT EXISTS eventLogs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         userId TEXT NOT NULL,
