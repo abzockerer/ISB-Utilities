@@ -56,20 +56,28 @@ function parseFactionMessage(message) {
 
     const robloxIds = new Set();
 
-    const regex =
-        /https:\/\/www\.roblox\.com\/users\/(\d+)\/profile/gi;
+    const members = [];
 
-    let match;
+const regex =
+    /\[([^\]]+)\s+\((\d+)\)\]\(https:\/\/www\.roblox\.com\/users\/(\d+)\/profile\)/gi;
 
-    while ((match = regex.exec(text)) !== null) {
-        robloxIds.add(match[1]);
-    }
+let match;
+
+while ((match = regex.exec(text)) !== null) {
+    const robloxName = match[1].trim();
+    const robloxId = match[3];
+
+    members.push({
+        robloxName,
+        robloxId
+    });
+}
 
     return {
-        page,
-        totalPages,
-        robloxIds
-    };
+    page,
+    totalPages,
+    members
+};
 }
 
 async function updateStatusMessage() {
@@ -124,9 +132,12 @@ async function processFactionMessage(message) {
         return;
     }
 
-    for (const robloxId of parsed.robloxIds) {
-        activeSession.robloxIds.add(robloxId);
-    }
+    for (const member of parsed.members) {
+    activeSession.members.set(
+        String(member.robloxId),
+        member
+    );
+}
 
     const wasAlreadyRecognized =
         activeSession.pages.has(parsed.page);
@@ -211,7 +222,7 @@ async function startFactionSync(interaction) {
         sourceMessageId: null,
         pages: new Set(),
         totalPages: null,
-        robloxIds: new Set(),
+        members: new Map(),
         processing: false
     };
 
@@ -300,72 +311,87 @@ async function finalizeFactionSync(interaction) {
         /*
          * Build Roblox ID -> Discord ID map.
          */
-        const users = db.prepare(`
-            SELECT id, robloxId
-            FROM users
-            WHERE robloxId IS NOT NULL
-        `).all();
-
-        const discordByRobloxId = new Map();
-
-        for (const user of users) {
-            discordByRobloxId.set(
-                String(user.robloxId),
-                user.id
-            );
-        }
-
         let added = 0;
-        let notFound = 0;
-        let failed = 0;
+let notFound = 0;
+let failed = 0;
 
-        const notFoundRobloxIds = [];
-        const alreadyAdded = new Set();
+const notFoundRobloxIds = [];
+const alreadyAdded = new Set();
 
-        for (const robloxId of session.robloxIds) {
-            if (alreadyAdded.has(robloxId)) {
-                continue;
-            }
+for (const factionMember of session.members.values()) {
+    const robloxId = String(factionMember.robloxId);
+    const robloxName = factionMember.robloxName;
 
-            alreadyAdded.add(robloxId);
+    if (alreadyAdded.has(robloxId)) {
+        continue;
+    }
 
-            const discordId =
-                discordByRobloxId.get(String(robloxId));
+    alreadyAdded.add(robloxId);
 
-            if (!discordId) {
-                notFound++;
-                notFoundRobloxIds.push(robloxId);
-                continue;
-            }
+    /*
+     * Find the Discord member by Roblox username.
+     *
+     * The Roblox username from the GAR Bot is expected
+     * to be the same as the Discord username.
+     */
+    const discordMember =
+        guild.members.cache.find(member =>
+            member.user.username.toLowerCase() ===
+                robloxName.toLowerCase()
+        );
 
-            const member =
-                guild.members.cache.get(discordId);
+    if (!discordMember) {
+        notFound++;
+        notFoundRobloxIds.push(
+            `${robloxName} (${robloxId})`
+        );
 
-            if (!member) {
-                notFound++;
-                notFoundRobloxIds.push(
-                    `${robloxId} (Discord member not found)`
-                );
-                continue;
-            }
+        continue;
+    }
 
-            try {
-                await member.roles.add(role);
-                added++;
-            } catch (error) {
-                failed++;
+    /*
+     * Automatically create/update the user in our database.
+     */
+    db.prepare(`
+        INSERT INTO users (
+            id,
+            discordName,
+            robloxName,
+            robloxId
+        )
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            discordName = excluded.discordName,
+            robloxName = excluded.robloxName,
+            robloxId = excluded.robloxId
+    `).run(
+        discordMember.id,
+        discordMember.user.username,
+        robloxName,
+        Number(robloxId)
+    );
 
-                console.error(
-                    `❌ Could not add role to ${member.user.tag}:`,
-                    error.message
-                );
-            }
-        }
+    console.log(
+        `🔗 ${robloxName} (${robloxId}) → ${discordMember.user.tag}`
+    );
+
+    try {
+        await discordMember.roles.add(role);
+        added++;
+    } catch (error) {
+        failed++;
+
+        console.error(
+            `❌ Could not add role to ${discordMember.user.tag}:`,
+            error.message
+        );
+    }
+}
 
         console.log(
             `📊 Faction sync results:
 Pages: ${session.pages.size}/${session.totalPages ?? session.pages.size}
-Roblox IDs: ${session.robloxIds.size}
+Roblox members: ${session.members.size}
 Roles removed: ${removed}
 Roles added: ${added}
 Not found: ${notFound}
@@ -395,7 +421,7 @@ Failed: ${failed}`
             content:
                 `## ✅ Game Role Synchronization Complete\n\n` +
                 `**Pages recognized:** ${session.pages.size}/${session.totalPages ?? session.pages.size}\n` +
-                `**Roblox members found:** ${session.robloxIds.size}\n\n` +
+                `**Roblox members found:** ${session.members.size}\n\n` +
                 `**Roles removed:** ${removed}\n` +
                 `**Roles added:** ${added}\n` +
                 `**Not found in database:** ${notFound}\n` +
@@ -405,7 +431,7 @@ Failed: ${failed}`
         });
 
         console.log(
-            `✅ Faction role sync completed. Pages: ${session.pages.size}, Roblox IDs: ${session.robloxIds.size}, Added: ${added}`
+            `✅ Faction role sync completed. Pages: ${session.pages.size}, Roblox members: ${session.members.size}, Added: ${added}`
         );
 
         activeSession = null;
