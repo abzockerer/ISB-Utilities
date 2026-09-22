@@ -335,10 +335,12 @@ for (const factionMember of session.members.values()) {
      * to be the same as the Discord username.
      */
     const discordMember =
-        guild.members.cache.find(member =>
-            member.user.username.toLowerCase() ===
-                robloxName.toLowerCase()
-        );
+    guild.members.cache.find(member =>
+        member.user.username.toLowerCase() ===
+            robloxName.toLowerCase() ||
+        member.displayName.toLowerCase() ===
+            robloxName.toLowerCase()
+    );
 
     if (!discordMember) {
         notFound++;
