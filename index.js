@@ -21,6 +21,12 @@ const { syncUsers } = require("./utils/userSync");
 const { startPresenceTracker } = require("./utils/robloxPresence");
 
 const {
+    handleFactionMessage,
+    handleFactionMessageUpdate,
+    finalizeFactionSync
+} = require("./utils/factionSync");
+
+const {
     Client,
     GatewayIntentBits,
     Collection
@@ -84,6 +90,10 @@ client.on("interactionCreate", async interaction => {
 
     // BUTTON HANDLER
     if (interaction.isButton()) {
+
+        if (interaction.customId.startsWith("faction_sync_done_")) {
+    return finalizeFactionSync(interaction);
+}
 
 
         if (interaction.customId.startsWith("confirm_quota_reset_")) {
@@ -176,6 +186,12 @@ client.on("interactionCreate", async interaction => {
 
 
 client.on("messageCreate", async message => {
+    if (message.author.id === "1099382225516118076") {
+    await handleFactionMessage(message);
+    return;
+}
+
+if (message.author.bot) return;
 console.log("Nachricht erkannt:", message.content);
         // FUN COMMAND: !mutte
 
@@ -411,6 +427,14 @@ mutteCooldown.set(message.author.id, Date.now());
 
 
 
+});
+
+client.on("messageUpdate", async (oldMessage, newMessage) => {
+    if (newMessage.author?.id !== "1099382225516118076") {
+        return;
+    }
+
+    await handleFactionMessageUpdate(newMessage);
 });
 
 
