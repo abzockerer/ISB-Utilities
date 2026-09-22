@@ -1,17 +1,19 @@
 const db = require("../database/database");
+const { OFFICER_ROLES } = require("../config/config");
 
 const FACTION_BOT_ID = "1099382225516118076";
 const FACTION_ROLE_ID = "1485381482699816970";
 const HICOM_ROLE_ID = "1430405883849867294";
 
-const FACTION_TITLE = "Imperial Security Bureau | Members (sorted by rank)";
+const FACTION_TITLE =
+    "Imperial Security Bureau | Members (sorted by rank)";
 
 let activeSession = null;
 
 function hasPermission(member) {
     return (
         member.roles.cache.some(role =>
-            require("../config/config").OFFICER_ROLES.includes(role.id)
+            OFFICER_ROLES.includes(role.id)
         ) ||
         member.roles.cache.has(HICOM_ROLE_ID)
     );
@@ -42,7 +44,8 @@ function parseFactionMessage(message) {
         return null;
     }
 
-    const pageMatch = text.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
+    const pageMatch =
+        text.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
 
     if (!pageMatch) {
         return null;
@@ -109,7 +112,6 @@ async function processFactionMessage(message) {
 
     if (!parsed) return;
 
-    // First matching GAR Bot message becomes our tracked message.
     if (!activeSession.sourceMessageId) {
         activeSession.sourceMessageId = message.id;
 
@@ -118,7 +120,6 @@ async function processFactionMessage(message) {
         );
     }
 
-    // Ignore all other GAR Bot messages.
     if (message.id !== activeSession.sourceMessageId) {
         return;
     }
@@ -279,7 +280,9 @@ async function finalizeFactionSync(interaction) {
 
         await guild.members.fetch();
 
-        // Remove the role from everyone who currently has it.
+        /*
+         * Remove the role from everyone who currently has it.
+         */
         let removed = 0;
 
         for (const member of role.members.values()) {
@@ -294,7 +297,9 @@ async function finalizeFactionSync(interaction) {
             }
         }
 
-        // Build Roblox ID -> Discord ID map from the database.
+        /*
+         * Build Roblox ID -> Discord ID map.
+         */
         const users = db.prepare(`
             SELECT id, robloxId
             FROM users
@@ -314,10 +319,13 @@ async function finalizeFactionSync(interaction) {
         let notFound = 0;
         let failed = 0;
 
+        const notFoundRobloxIds = [];
         const alreadyAdded = new Set();
 
         for (const robloxId of session.robloxIds) {
-            if (alreadyAdded.has(robloxId)) continue;
+            if (alreadyAdded.has(robloxId)) {
+                continue;
+            }
 
             alreadyAdded.add(robloxId);
 
@@ -326,6 +334,7 @@ async function finalizeFactionSync(interaction) {
 
             if (!discordId) {
                 notFound++;
+                notFoundRobloxIds.push(robloxId);
                 continue;
             }
 
@@ -334,6 +343,9 @@ async function finalizeFactionSync(interaction) {
 
             if (!member) {
                 notFound++;
+                notFoundRobloxIds.push(
+                    `${robloxId} (Discord member not found)`
+                );
                 continue;
             }
 
@@ -350,6 +362,35 @@ async function finalizeFactionSync(interaction) {
             }
         }
 
+        console.log(
+            `📊 Faction sync results:
+Pages: ${session.pages.size}/${session.totalPages ?? session.pages.size}
+Roblox IDs: ${session.robloxIds.size}
+Roles removed: ${removed}
+Roles added: ${added}
+Not found: ${notFound}
+Failed: ${failed}`
+        );
+
+        if (notFoundRobloxIds.length > 0) {
+            console.log(
+                "❌ Roblox IDs not found in database:"
+            );
+
+            for (const robloxId of notFoundRobloxIds) {
+                console.log(`   - ${robloxId}`);
+            }
+        }
+
+        let notFoundText = "None";
+
+        if (notFoundRobloxIds.length > 0) {
+            notFoundText =
+                notFoundRobloxIds
+                    .map(id => `\`${id}\``)
+                    .join(", ");
+        }
+
         await session.controlMessage.edit({
             content:
                 `## ✅ Game Role Synchronization Complete\n\n` +
@@ -358,7 +399,8 @@ async function finalizeFactionSync(interaction) {
                 `**Roles removed:** ${removed}\n` +
                 `**Roles added:** ${added}\n` +
                 `**Not found in database:** ${notFound}\n` +
-                `**Failed:** ${failed}`,
+                `**Failed:** ${failed}\n\n` +
+                `**Roblox IDs not found:**\n${notFoundText}`,
             components: []
         });
 
