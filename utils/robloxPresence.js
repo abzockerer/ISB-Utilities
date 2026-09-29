@@ -178,11 +178,15 @@ setInterval(async () => {
                     .setColor("Green");
 
                 const msg =
-                    await channel.send({
-                        embeds: [embed]
-                    });
+    await channel.send({
+        embeds: [embed]
+    });
 
-                db.prepare(`
+await channel.send({
+    content: "<@&1437038728903131237>"
+});
+
+db.prepare(`
                     INSERT OR REPLACE INTO presence_logs
                     (
                         discordId,
