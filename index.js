@@ -527,6 +527,58 @@ try {
 
 }
 
+async function assignDailyRole(client) {
+    const DAILY_ROLE = "1438416966397202553";
+
+    try {
+        const guild = client.guilds.cache.get(process.env.GUILD_ID);
+
+        if (!guild) {
+            console.error("❌ Guild not found for daily role assignment.");
+            return;
+        }
+
+        const role = await guild.roles.fetch(DAILY_ROLE);
+
+        if (!role) {
+            console.error(`❌ Daily role ${DAILY_ROLE} not found.`);
+            return;
+        }
+
+        const members = await guild.members.fetch();
+
+        let added = 0;
+        let alreadyHad = 0;
+        let failed = 0;
+
+        for (const member of members.values()) {
+            if (member.user.bot) continue;
+
+            if (member.roles.cache.has(DAILY_ROLE)) {
+                alreadyHad++;
+                continue;
+            }
+
+            try {
+                await member.roles.add(role);
+                added++;
+            } catch (err) {
+                failed++;
+                console.error(
+                    `❌ Could not give daily role to ${member.user.tag}:`,
+                    err.message
+                );
+            }
+        }
+
+        console.log(
+            `✅ Daily role assignment completed. Added: ${added}, Already had: ${alreadyHad}, Failed: ${failed}`
+        );
+    } catch (err) {
+        console.error("Daily role assignment error:", err);
+    }
+}
+
 function scheduleDailyCleanup(client) {
 
     const now = new Date();
@@ -546,6 +598,7 @@ function scheduleDailyCleanup(client) {
     setTimeout(async () => {
 
         await cleanupChannel(client);
+        await assignDailyRole(client);
         scheduleDailyCleanup(client);
 
     }, delay);
