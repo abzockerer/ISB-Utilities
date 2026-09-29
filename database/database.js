@@ -48,6 +48,14 @@ CREATE TABLE IF NOT EXISTS presence_logs (
 )
 `).run();
 
+db.prepare(`
+CREATE TABLE IF NOT EXISTS officer_ping_preferences (
+    discordId TEXT PRIMARY KEY,
+    preference TEXT DEFAULT 'yes',
+    dmSent INTEGER DEFAULT 0
+)
+`).run();
+
 try {
     db.prepare(`
         ALTER TABLE users

@@ -182,9 +182,17 @@ setInterval(async () => {
         embeds: [embed]
     });
 
-await channel.send({
-    content: "<@&1437038728903131237>"
-});
+const pingPreference = db.prepare(`
+    SELECT preference
+    FROM officer_ping_preferences
+    WHERE discordId = ?
+`).get(member.id);
+
+if (!pingPreference || pingPreference.preference === "yes") {
+    await channel.send({
+        content: "<@&1437038728903131237>"
+    });
+}
 
 db.prepare(`
                     INSERT OR REPLACE INTO presence_logs

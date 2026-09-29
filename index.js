@@ -29,7 +29,11 @@ const {
 const {
     Client,
     GatewayIntentBits,
-    Collection
+    Collection,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    EmbedBuilder
 } = require("discord.js");
 
 const fs = require("fs");
@@ -76,6 +80,7 @@ client.once("ready", async () => {
     await syncUsers(guild);
 
     startPresenceTracker(client);
+    await checkOfficerPingPreferences(client);
 
     console.log(`✅ ${client.user.tag} ist online!`);
     scheduleDailyCleanup(client);
@@ -90,7 +95,41 @@ client.on("interactionCreate", async interaction => {
 
     // BUTTON HANDLER
     if (interaction.isButton()) {
+if (
+    interaction.customId.startsWith("officer_ping_yes_") ||
+    interaction.customId.startsWith("officer_ping_no_")
+) {
+    const parts = interaction.customId.split("_");
+    const choice = parts[2];
+    const userId = parts[3];
 
+    if (interaction.user.id !== userId) {
+        return interaction.reply({
+            content: "❌ These buttons are not for you.",
+            ephemeral: true
+        });
+    }
+
+    const preference = choice === "yes" ? "yes" : "no";
+
+    db.prepare(`
+        UPDATE officer_ping_preferences
+        SET preference = ?
+        WHERE discordId = ?
+    `).run(preference, userId);
+
+    const embed = new EmbedBuilder()
+        .setTitle("Death Trooper Company Ping")
+        .setDescription(
+            "Do you want to ping the Death Trooper Company the next times you join the game?\n\n" +
+            `**Current:** ${preference === "yes" ? "Yes" : "No"}`
+        )
+        .setColor(preference === "yes" ? "Green" : "Red");
+
+    return interaction.update({
+        embeds: [embed]
+    });
+}
         if (interaction.customId.startsWith("faction_sync_done_")) {
     return finalizeFactionSync(interaction);
 }
@@ -579,6 +618,109 @@ async function assignDailyRole(client) {
     }
 }
 
+async function checkOfficerPingPreferences(client) {
+    try {
+        const guild = client.guilds.cache.get(process.env.GUILD_ID);
+
+        if (!guild) {
+            console.error("❌ Guild not found for officer ping preference check.");
+            return;
+        }
+
+        const members = await guild.members.fetch();
+
+        const officers = members.filter(member =>
+            !member.user.bot &&
+            member.roles.cache.some(role =>
+                OFFICER_ROLES.includes(role.id)
+            )
+        );
+
+        let checked = 0;
+        let sent = 0;
+
+        for (const member of officers.values()) {
+            checked++;
+
+            let preference = db.prepare(`
+                SELECT discordId, preference, dmSent
+                FROM officer_ping_preferences
+                WHERE discordId = ?
+            `).get(member.id);
+
+            if (!preference) {
+                db.prepare(`
+                    INSERT INTO officer_ping_preferences
+                    (discordId, preference, dmSent)
+                    VALUES (?, 'yes', 0)
+                `).run(member.id);
+
+                preference = {
+                    discordId: member.id,
+                    preference: "yes",
+                    dmSent: 0
+                };
+            }
+
+            if (preference.dmSent === 1) {
+                continue;
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle("Death Trooper Company Ping")
+                .setDescription(
+                    "Do you want to ping the Death Trooper Company the next times you join the game?\n\n" +
+                    `**Current:** ${preference.preference === "yes" ? "Yes" : "No"}`
+                )
+                .setColor("Blue");
+
+            const buttons = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`officer_ping_yes_${member.id}`)
+                        .setLabel("Yes")
+                        .setStyle(ButtonStyle.Success),
+                    new ButtonBuilder()
+                        .setCustomId(`officer_ping_no_${member.id}`)
+                        .setLabel("No")
+                        .setStyle(ButtonStyle.Danger)
+                );
+
+            try {
+                await member.send({
+                    embeds: [embed],
+                    components: [buttons]
+                });
+
+                db.prepare(`
+                    UPDATE officer_ping_preferences
+                    SET dmSent = 1
+                    WHERE discordId = ?
+                `).run(member.id);
+
+                sent++;
+
+                console.log(
+                    `📩 Officer ping preference DM sent to ${member.user.tag}`
+                );
+
+            } catch (error) {
+                console.error(
+                    `❌ Could not DM ${member.user.tag}:`,
+                    error.message
+                );
+            }
+        }
+
+        console.log(
+            `✅ Officer ping preference check completed. Officers: ${checked}, DMs sent: ${sent}`
+        );
+
+    } catch (error) {
+        console.error("Officer ping preference check error:", error);
+    }
+}
+
 function scheduleDailyCleanup(client) {
 
     const now = new Date();
@@ -599,6 +741,7 @@ function scheduleDailyCleanup(client) {
 
         await cleanupChannel(client);
         await assignDailyRole(client);
+        await checkOfficerPingPreferences(client);
         scheduleDailyCleanup(client);
 
     }, delay);
