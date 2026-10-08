@@ -501,6 +501,15 @@ const PROTECTED_ROLES = [
     "1430405883849867294"
 ];
 
+const CLEANUP_CHANNELS = [
+    "1437932186975080589",
+    "1434785087991451759",
+    "1556870319170650192",
+    "1556191125394423848"
+];
+
+const CLEANUP_PROTECTED_ROLE = "1430416663496360037";
+
 async function cleanupChannel(client) {
 
     try {
@@ -564,6 +573,63 @@ try {
 
     }
 
+}
+
+async function cleanupSpecifiedChannels(client) {
+    try {
+        for (const channelId of CLEANUP_CHANNELS) {
+            const channel = await client.channels.fetch(channelId);
+
+            if (!channel || !channel.isTextBased()) {
+                console.error(`❌ Channel ${channelId} not found or not text-based.`);
+                continue;
+            }
+
+            let lastId = null;
+
+            while (true) {
+                const messages = await channel.messages.fetch({
+                    limit: 100,
+                    before: lastId ?? undefined
+                });
+
+                if (messages.size === 0) break;
+
+                for (const message of messages.values()) {
+                    let keep = false;
+
+                    try {
+                        const member = await channel.guild.members.fetch(
+                            message.author.id
+                        );
+
+                        keep = member.roles.cache.has(CLEANUP_PROTECTED_ROLE);
+                    } catch {
+                        keep = false;
+                    }
+
+                    if (keep) continue;
+
+                    try {
+                        await message.delete();
+                    } catch (err) {
+                        console.log(
+                            `Konnte Nachricht ${message.id} in ${channelId} nicht löschen.`
+                        );
+                    }
+                }
+
+                lastId = messages.last().id;
+            }
+
+            console.log(`✅ Channel ${channelId} wurde bereinigt.`);
+        }
+
+        console.log("✅ Specified channel cleanup completed.");
+
+    } catch (err) {
+        console.error("Specified channel cleanup error:", err);
+    }
 }
 
 async function assignDailyRole(client) {
@@ -740,6 +806,7 @@ function scheduleDailyCleanup(client) {
     setTimeout(async () => {
 
         await cleanupChannel(client);
+        await cleanupSpecifiedChannels(client);
         await assignDailyRole(client);
         await checkOfficerPingPreferences(client);
         scheduleDailyCleanup(client);
