@@ -154,6 +154,26 @@ if (
 
             }
 
+            await interaction.deferUpdate();
+
+            let quotaWinnerResult;
+
+            try {
+
+                quotaWinnerResult =
+                    await assignQuotaWinnerRoles(interaction.guild);
+
+            } catch (error) {
+
+                console.error("Quota winner role assignment error:", error);
+
+                return interaction.editReply({
+                    content:
+                        "❌ The quota reset was not completed because the winner roles could not be assigned.",
+                    components: []
+                });
+
+            }
 
             db.prepare(`
                 UPDATE users
@@ -169,9 +189,11 @@ if (
 
 
 
-            return interaction.update({
+            return interaction.editReply({
                 content:
-                    "✅ Successfully reset all hosted events, attended events and event history.",
+                    `✅ Successfully reset all hosted events, attended events and event history.\n` +
+                    `🏆 Hosted winner role assigned to ${quotaWinnerResult.hosted} user(s).\n` +
+                    `🏆 Attended winner role assigned to ${quotaWinnerResult.attended} user(s).`,
                 components: []
             });
 
@@ -219,6 +241,99 @@ if (
 }
 
 });
+
+const HOSTED_WINNER_ROLE = "1490505575690141888";
+const ATTENDED_WINNER_ROLE = "1490505511173357739";
+
+async function assignQuotaWinnerRoles(guild) {
+
+    const members = await guild.members.fetch();
+
+    const hostedRole = await guild.roles.fetch(HOSTED_WINNER_ROLE);
+    const attendedRole = await guild.roles.fetch(ATTENDED_WINNER_ROLE);
+
+    if (!hostedRole || !attendedRole) {
+        throw new Error("A quota winner role could not be found.");
+    }
+
+    for (const member of members.values()) {
+
+        if (member.roles.cache.has(HOSTED_WINNER_ROLE)) {
+            await member.roles.remove(hostedRole);
+        }
+
+        if (member.roles.cache.has(ATTENDED_WINNER_ROLE)) {
+            await member.roles.remove(attendedRole);
+        }
+
+    }
+
+    const userData = new Map(
+        db.prepare(`
+            SELECT id, hostedEvents, attendedEvents
+            FROM users
+        `).all().map(user => [user.id, user])
+    );
+
+    const officers = [];
+    const nonOfficers = [];
+
+    for (const member of members.values()) {
+
+        if (member.user.bot) continue;
+
+        const data = userData.get(member.id) || {};
+
+        const entry = {
+            member,
+            hostedEvents: Number(data.hostedEvents) || 0,
+            attendedEvents: Number(data.attendedEvents) || 0
+        };
+
+        const isOfficer = member.roles.cache.some(role =>
+            OFFICER_ROLES.includes(role.id)
+        );
+
+        if (isOfficer) {
+            officers.push(entry);
+        } else {
+            nonOfficers.push(entry);
+        }
+
+    }
+
+    const hostedMax = Math.max(
+        0,
+        ...officers.map(entry => entry.hostedEvents)
+    );
+
+    const attendedMax = Math.max(
+        0,
+        ...nonOfficers.map(entry => entry.attendedEvents)
+    );
+
+    const hostedWinners = hostedMax > 0
+        ? officers.filter(entry => entry.hostedEvents === hostedMax)
+        : [];
+
+    const attendedWinners = attendedMax > 0
+        ? nonOfficers.filter(entry => entry.attendedEvents === attendedMax)
+        : [];
+
+    for (const winner of hostedWinners) {
+        await winner.member.roles.add(hostedRole);
+    }
+
+    for (const winner of attendedWinners) {
+        await winner.member.roles.add(attendedRole);
+    }
+
+    return {
+        hosted: hostedWinners.length,
+        attended: attendedWinners.length
+    };
+
+}
 
 
 
@@ -793,7 +908,7 @@ function scheduleDailyCleanup(client) {
 
     const next = new Date();
 
-    next.setHours(23, 0, 0, 0);
+    next.setHours(2, 0, 0, 0);
 
     if (next <= now) {
 
