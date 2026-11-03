@@ -33,7 +33,8 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    EmbedBuilder
+    EmbedBuilder,
+    Partials
 } = require("discord.js");
 
 const fs = require("fs");
@@ -46,12 +47,66 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessageReactions
+    ],
+    partials: [
+        Partials.Message,
+        Partials.Channel,
+        Partials.Reaction,
+        Partials.User
     ]
 });
 
 
 client.commands = new Collection();
+
+const REACTION_LOG_CHANNEL = "1506974977243615312";
+
+client.on("messageReactionRemove", async (reaction, user) => {
+
+    try {
+
+        if (reaction.partial) {
+            await reaction.fetch();
+        }
+
+        if (reaction.message.partial) {
+            await reaction.message.fetch();
+        }
+
+        if (user.partial) {
+            await user.fetch();
+        }
+
+        const logChannel =
+            await client.channels.fetch(REACTION_LOG_CHANNEL);
+
+        if (!logChannel || !logChannel.isTextBased()) return;
+
+        const userName =
+            `${user.username}${user.bot ? " (Bot)" : ""}`;
+
+        const reactionName =
+            reaction.emoji.toString() ||
+            reaction.emoji.name ||
+            "Unknown reaction";
+
+        const messageLink =
+            reaction.message.url ||
+            `https://discord.com/channels/${reaction.message.guildId}/${reaction.message.channelId}/${reaction.message.id}`;
+
+        await logChannel.send(
+            `${userName} has deleted the reaction ${reactionName} from ${messageLink}.`
+        );
+
+    } catch (error) {
+
+        console.error("Reaction removal logging error:", error);
+
+    }
+
+});
 
 
 const commandFiles = fs.readdirSync("./commands")
