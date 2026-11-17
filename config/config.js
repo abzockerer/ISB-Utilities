@@ -1,3 +1,5 @@
+// Legacy Discord roles used only for one-time migration and role synchronization.
+// Officer and HiCOM membership is now managed in officer_management.
 const OFFICER_ROLES = [
     "1430416663496360037",
     "1482858985559298058",
@@ -10,6 +12,8 @@ const OFFICER_ROLES = [
 ];
 
 const GUILD_ID = "1430400192921735170";
+
+const LEGACY_HICOM_ROLE = "1430405883849867294";
 
 const ROBLOX_GROUP_ID = 344210359;
 
@@ -26,6 +30,7 @@ const NEWCOMER_ROLES = [
 module.exports = {
     OFFICER_ROLES,
     GUILD_ID,
+    LEGACY_HICOM_ROLE,
     ROBLOX_GROUP_ID,
     NEWCOMER_ROLES
 };

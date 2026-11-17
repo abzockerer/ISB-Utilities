@@ -1,4 +1,5 @@
 const db = require("../database/database");
+const officerManagement = require("./officerManagement");
 
 
 function addHostedEvent(userId) {
@@ -146,5 +147,18 @@ module.exports = {
     addAttendedEvent,
     addEvents,
     addEventLog,
-    updateHostedEvents
+    updateHostedEvents,
+    addOfficer: officerManagement.addOfficer,
+    updateOfficer: officerManagement.updateOfficer,
+    removeOfficer: officerManagement.removeOfficer,
+    addHiCOM: officerManagement.addHiCOM,
+    removeHiCOM: officerManagement.removeHiCOM,
+    getOfficer: officerManagement.getOfficer,
+    getHiCOM: officerManagement.getHiCOM,
+    getAllOfficers: officerManagement.getAllOfficers,
+    getAllHiCOMs: officerManagement.getAllHiCOMs,
+    isOfficer: officerManagement.isOfficer,
+    isHiCOM: officerManagement.isHiCOM,
+    getOfficerManagementEntry:
+        officerManagement.getOfficerManagementEntry
 };

@@ -1,6 +1,8 @@
 const { SlashCommandBuilder } = require("discord.js");
 const db = require("../database/database");
-const { OFFICER_ROLES } = require("../config/config");
+const {
+    getAllManagedMembers
+} = require("../utils/officerManagement");
 
 module.exports = {
 
@@ -20,6 +22,10 @@ module.exports = {
             const users = db.prepare(
                 "SELECT * FROM users"
             ).all();
+
+            const managedMembers = new Set(
+                getAllManagedMembers().map(member => member.discordId)
+            );
 
 
             let hosted = [];
@@ -42,14 +48,11 @@ module.exports = {
 
 
 
-                const isOfficer =
-                    member.roles.cache.some(role =>
-                        OFFICER_ROLES.includes(role.id)
-                    );
+                const isManagedOfficer = managedMembers.has(user.id);
 
 
 
-                if (isOfficer) {
+                if (isManagedOfficer) {
 
 
                     hosted.push({

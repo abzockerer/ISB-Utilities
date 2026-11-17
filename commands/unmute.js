@@ -2,7 +2,7 @@ const {
     SlashCommandBuilder
 } = require("discord.js");
 
-const { OFFICER_ROLES } = require("../config/config");
+const { hasOfficerPermission } = require("../utils/permissions");
 
 
 module.exports = {
@@ -30,13 +30,7 @@ module.exports = {
     async execute(interaction) {
 
 
-        const hasPermission =
-            interaction.member.roles.cache.some(role =>
-                OFFICER_ROLES.includes(role.id)
-            );
-
-
-        if (!hasPermission) {
+        if (!hasOfficerPermission(interaction.user.id)) {
 
             return interaction.reply({
                 content: "❌ You do not have permission to use this command.",

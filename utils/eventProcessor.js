@@ -1,4 +1,7 @@
-const { OFFICER_ROLES } = require("../config/config");
+const {
+    isOfficer,
+    isHiCOM
+} = require("./permissions");
 
 
 async function processEvent(hostedUsers, supervisedUsers, attendeeUsers, guild) {
@@ -38,13 +41,11 @@ async function processEvent(hostedUsers, supervisedUsers, attendeeUsers, guild) 
         }
 
 
-        // Officer prüfen
-        const isOfficer = member.roles.cache.some(role =>
-            OFFICER_ROLES.includes(role.id)
-        );
+        const isManagedOfficer =
+            isOfficer(userId) || isHiCOM(userId);
 
 
-        if (isOfficer) {
+        if (isManagedOfficer) {
             hostedEvents.add(userId);
         } else {
             attendedEvents.add(userId);

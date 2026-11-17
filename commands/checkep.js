@@ -1,6 +1,9 @@
 const { SlashCommandBuilder } = require("discord.js");
 const db = require("../database/database");
-const { OFFICER_ROLES } = require("../config/config");
+const {
+    isOfficer,
+    isHiCOM
+} = require("../utils/permissions");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -18,9 +21,8 @@ module.exports = {
         const user = interaction.options.getUser("user");
         const member = await interaction.guild.members.fetch(user.id);
 
-        const isOfficer = member.roles.cache.some(role =>
-            OFFICER_ROLES.includes(role.id)
-        );
+        const isManagedOfficer =
+            isOfficer(user.id) || isHiCOM(user.id);
 
         const data = db.prepare(
             "SELECT * FROM users WHERE id = ?"
@@ -30,7 +32,7 @@ module.exports = {
         let lifetimeEvents = 0;
         let type = "";
 
-        if (isOfficer) {
+        if (isManagedOfficer) {
             events = data ? data.hostedEvents : 0;
             type = "hosted";
         } else {

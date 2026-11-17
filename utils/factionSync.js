@@ -1,23 +1,16 @@
 const db = require("../database/database");
-const { OFFICER_ROLES } = require("../config/config");
+const {
+    hasOfficerPermission,
+    isSuperuser
+} = require("./permissions");
 
 const FACTION_BOT_ID = "1099382225516118076";
 const FACTION_ROLE_ID = "1485381482699816970";
-const HICOM_ROLE_ID = "1430405883849867294";
 
 const FACTION_TITLE =
     "Imperial Security Bureau | Members (sorted by rank)";
 
 let activeSession = null;
-
-function hasPermission(member) {
-    return (
-        member.roles.cache.some(role =>
-            OFFICER_ROLES.includes(role.id)
-        ) ||
-        member.roles.cache.has(HICOM_ROLE_ID)
-    );
-}
 
 function parseFactionMessage(message) {
     if (!message) return null;
@@ -185,7 +178,7 @@ async function startFactionSync(interaction) {
         });
     }
 
-    if (!hasPermission(interaction.member)) {
+    if (!hasOfficerPermission(interaction.user.id)) {
         return interaction.reply({
             content:
                 "❌ You do not have permission to use this command.",
@@ -239,7 +232,10 @@ async function finalizeFactionSync(interaction) {
         });
     }
 
-    if (interaction.user.id !== activeSession.userId) {
+    if (
+        interaction.user.id !== activeSession.userId &&
+        !isSuperuser(interaction.user.id)
+    ) {
         return interaction.reply({
             content:
                 "❌ Only the person who started the synchronization can finish it.",

@@ -2,16 +2,13 @@ const {
     SlashCommandBuilder
 } = require("discord.js");
 
-const {
-    OFFICER_ROLES
-} = require("../config/config");
+const { hasOfficerPermission } = require("../utils/permissions");
 
 const {
     addWarning,
     getWarningCount
 } = require("../utils/warnings");
 
-const HICOM_ROLE = "1430405883849867294";
 const STRIKE_ROLE = "1485385252460564520";
 
 module.exports = {
@@ -32,13 +29,7 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        const hasPermission =
-            interaction.member.roles.cache.some(role =>
-                OFFICER_ROLES.includes(role.id)
-            ) ||
-            interaction.member.roles.cache.has(HICOM_ROLE);
-
-        if (!hasPermission) {
+        if (!hasOfficerPermission(interaction.user.id)) {
             return interaction.reply({
                 content: "❌ You do not have permission to use this command.",
                 ephemeral: true

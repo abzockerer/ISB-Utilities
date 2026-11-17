@@ -1,3 +1,7 @@
 node_modules/
 .env
-database/events.db
+/database/*.db
+/database/*.db-*
+/database/*.backup
+/database/*.sqlite
+/database/*.sqlite3

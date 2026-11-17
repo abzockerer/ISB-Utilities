@@ -5,10 +5,7 @@ const {
     ButtonStyle
 } = require("discord.js");
 
-const db = require("../database/database");
-
-const ALLOWED_ROLE = "1430405883849867294";
-const ALLOWED_USER = "1221391460860035093";
+const { hasHiCOMPermission } = require("../utils/permissions");
 
 module.exports = {
 
@@ -18,11 +15,7 @@ module.exports = {
 
     async execute(interaction) {
 
-        const hasPermission =
-            interaction.user.id === ALLOWED_USER ||
-            interaction.member.roles.cache.has(ALLOWED_ROLE);
-
-        if (!hasPermission) {
+        if (!hasHiCOMPermission(interaction.user.id)) {
             return interaction.reply({
                 content: "❌ You do not have permission.",
                 ephemeral: true

@@ -14,11 +14,22 @@ const {
 
 const { processEvent } = require("./utils/eventProcessor");
 const { getSection, getUserIds } = require("./utils/eventParser");
-const { OFFICER_ROLES, GUILD_ID } = require("./config/config");
+const { GUILD_ID } = require("./config/config");
 const { loginRoblox } = require("./utils/roblox");
 const newcomerHandler = require("./handlers/newcomer");
 const { syncUsers } = require("./utils/userSync");
 const { startPresenceTracker } = require("./utils/robloxPresence");
+const {
+    getAllManagedMembers,
+    migrateLegacyOfficerManagement
+} = require("./utils/officerManagement");
+const {
+    hasOfficerPermission,
+    hasHiCOMPermission,
+    isSuperuser,
+    isOfficer,
+    isHiCOM
+} = require("./utils/permissions");
 
 const {
     handleFactionMessage,
@@ -125,7 +136,7 @@ client.once("ready", async () => {
 
     await loginRoblox();
 
-    const guild = client.guilds.cache.get(process.env.GUILD_ID);
+    const guild = client.guilds.cache.get(process.env.GUILD_ID || GUILD_ID);
 
     if (!guild) {
         console.log("❌ Server nicht gefunden!");
@@ -133,6 +144,14 @@ client.once("ready", async () => {
     }
 
     await syncUsers(guild);
+
+    const migration = await migrateLegacyOfficerManagement(guild);
+
+    if (migration.migrated) {
+        console.log(
+            `✅ Officer/HiCOM migration completed. Added: ${migration.added}`
+        );
+    }
 
     startPresenceTracker(client);
     await checkOfficerPingPreferences(client);
@@ -197,10 +216,13 @@ if (
 
 
             const canResetQuota =
-                interaction.user.id === "1221391460860035093" ||
-                interaction.member.roles.cache.has("1430405883849867294");
+                hasHiCOMPermission(interaction.user.id);
 
-            if (interaction.user.id !== userId || !canResetQuota) {
+            if (
+                !canResetQuota ||
+                (interaction.user.id !== userId &&
+                    !isSuperuser(interaction.user.id))
+            ) {
 
                 return interaction.reply({
                     content: "❌ Only the person who started the reset can confirm it.",
@@ -330,6 +352,10 @@ async function assignQuotaWinnerRoles(guild) {
         `).all().map(user => [user.id, user])
     );
 
+    const managedMembers = new Map(
+        getAllManagedMembers().map(entry => [entry.discordId, entry])
+    );
+
     const officers = [];
     const nonOfficers = [];
 
@@ -345,13 +371,11 @@ async function assignQuotaWinnerRoles(guild) {
             attendedEvents: Number(data.attendedEvents) || 0
         };
 
-        const isOfficer = member.roles.cache.some(role =>
-            OFFICER_ROLES.includes(role.id)
-        );
+        const managedMember = managedMembers.get(member.id);
 
-        if (isOfficer) {
+        if (managedMember?.type === "Officer") {
             officers.push(entry);
-        } else {
+        } else if (!managedMember) {
             nonOfficers.push(entry);
         }
 
@@ -416,11 +440,8 @@ console.log("Nachricht erkannt:", message.content);
 
 
         const allowedRole = "1506580506748125284";
-        const allowedUser = "1221391460860035093";
-
-
         const hasPermission =
-            message.author.id === allowedUser ||
+            hasOfficerPermission(message.author.id) ||
             message.member.roles.cache.has(allowedRole);
 
 
@@ -479,13 +500,7 @@ mutteCooldown.set(message.author.id, Date.now());
 
 
 
-    const hasPermission =
-    message.member.roles.cache.some(role =>
-        OFFICER_ROLES.includes(role.id)
-    );
-
-
-    if (!hasPermission) return;
+    if (!hasOfficerPermission(message.author.id)) return;
 
 
 
@@ -667,8 +682,7 @@ const CLEANUP_CHANNEL = "1430773368080306268";
 const PROTECTED_MESSAGE = "1467334166160085195";
 
 const PROTECTED_ROLES = [
-    "1467012368704999455",
-    "1430405883849867294"
+    "1467012368704999455"
 ];
 
 const CLEANUP_CHANNELS = [
@@ -677,8 +691,6 @@ const CLEANUP_CHANNELS = [
     "1556870319170650192",
     "1556191125394423848"
 ];
-
-const CLEANUP_PROTECTED_ROLE = "1430416663496360037";
 
 async function cleanupChannel(client) {
 
@@ -711,7 +723,7 @@ try {
 
     keep = member.roles.cache.some(role =>
         PROTECTED_ROLES.includes(role.id)
-    );
+    ) || isHiCOM(member.id);
 
 } catch {
     keep = false;
@@ -773,7 +785,9 @@ async function cleanupSpecifiedChannels(client) {
                             message.author.id
                         );
 
-                        keep = member.roles.cache.has(CLEANUP_PROTECTED_ROLE);
+                        keep =
+                            isOfficer(member.id) ||
+                            isHiCOM(member.id);
                     } catch {
                         keep = false;
                     }
@@ -864,18 +878,16 @@ async function checkOfficerPingPreferences(client) {
         }
 
         const members = await guild.members.fetch();
-
-        const officers = members.filter(member =>
-            !member.user.bot &&
-            member.roles.cache.some(role =>
-                OFFICER_ROLES.includes(role.id)
-            )
-        );
+        const managedMembers = getAllManagedMembers();
 
         let checked = 0;
         let sent = 0;
 
-        for (const member of officers.values()) {
+        for (const managedMember of managedMembers) {
+            const member = members.get(managedMember.discordId);
+
+            if (!member || member.user.bot) continue;
+
             checked++;
 
             let preference = db.prepare(`

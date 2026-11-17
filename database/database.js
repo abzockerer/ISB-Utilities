@@ -56,6 +56,27 @@ CREATE TABLE IF NOT EXISTS officer_ping_preferences (
 )
 `).run();
 
+db.prepare(`
+CREATE TABLE IF NOT EXISTS officer_management (
+    discordId TEXT PRIMARY KEY,
+    discordName TEXT NOT NULL,
+    robloxId INTEGER,
+    rank TEXT,
+    killzone REAL,
+    quota INTEGER,
+    type TEXT NOT NULL CHECK (type IN ('Officer', 'HiCOM')),
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
+)
+`).run();
+
+db.prepare(`
+CREATE TABLE IF NOT EXISTS officer_management_migrations (
+    name TEXT PRIMARY KEY,
+    completedAt INTEGER NOT NULL
+)
+`).run();
+
 try {
     db.prepare(`
         ALTER TABLE users

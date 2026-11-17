@@ -1,29 +1,12 @@
 const { SlashCommandBuilder } = require("discord.js");
 const db = require("../database/database");
-const { OFFICER_ROLES } = require("../config/config");
-
-const QUOTAS = {
-
-    "1488416355626520576": 3,
-    "1482858660609921277": 3,
-    "1437914178479325225": 2,
-    "1482858985559298058": 2,
-    "1519575872250843246": 2
-
-};
-
-const IGNORED_ROLES = [
-
-    "1521010747155550328",
-    "1519575872250843246",
-    "1515264619395027116",
-    "1438028232120078346",
-    "1438033595917926410"
-
-];
+const {
+    getOfficer,
+    getAllOfficers
+} = require("../utils/officerManagement");
+const { hasOfficerPermission } = require("../utils/permissions");
 
 module.exports = {
-
     data: new SlashCommandBuilder()
         .setName("quotacheck")
         .setDescription("Checks officer event quotas.")
@@ -37,149 +20,62 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply();
 
-        const hasPermission =
-            interaction.member.roles.cache.some(role =>
-                OFFICER_ROLES.includes(role.id)
-            ) ||
-            interaction.member.roles.cache.has("1430405883849867294");
-
-        if (!hasPermission) {
-
+        if (!hasOfficerPermission(interaction.user.id)) {
             return interaction.editReply(
-    "❌ You do not have permission to use this command."
-);
-
+                "❌ You do not have permission to use this command."
+            );
         }
 
-
-        
-
-        const targetUser =
-            interaction.options.getUser("user");
-
-        let officers = [];
+        const targetUser = interaction.options.getUser("user");
+        let officers;
 
         if (targetUser) {
+            const officer = getOfficer(targetUser.id);
 
-            const member =
-                await interaction.guild.members.fetch(targetUser.id);
-
-            const ignored =
-                IGNORED_ROLES.some(roleId =>
-                    member.roles.cache.has(roleId)
-                );
-
-            if (ignored) {
-
+            if (!officer) {
                 return interaction.editReply(
-                    "❌ This user is ignored."
+                    "❌ This user is not managed as an Officer."
                 );
-
             }
 
-            let quota = null;
-
-            for (const roleId in QUOTAS) {
-
-                if (member.roles.cache.has(roleId)) {
-
-                    quota = QUOTAS[roleId];
-                    break;
-
-                }
-
-            }
-
-            if (quota === null) {
-
-                return interaction.editReply(
-                    "❌ This user has no quota."
-                );
-
-            }
-
-            officers.push({
-                member,
-                quota
-            });
-
+            officers = [officer];
         } else {
-
-            for (const [, member] of interaction.guild.members.cache) {
-
-                const ignored =
-                    IGNORED_ROLES.some(roleId =>
-                        member.roles.cache.has(roleId)
-                    );
-
-                if (ignored) continue;
-
-                let quota = null;
-
-                for (const roleId in QUOTAS) {
-
-                    if (member.roles.cache.has(roleId)) {
-
-                        quota = QUOTAS[roleId];
-                        break;
-
-                    }
-
-                }
-
-                if (quota !== null) {
-
-                    officers.push({
-                        member,
-                        quota
-                    });
-
-                }
-
-            }
-
+            officers = getAllOfficers();
         }
 
         let output = "📊 **Officer Quota Check**\n\n";
 
-        for (const officer of officers) {
-
-            let userData = db.prepare(
-                "SELECT * FROM users WHERE id = ?"
-            ).get(officer.member.id);
-
-            if (!userData) {
-
-                db.prepare(`
-                    INSERT INTO users
-                    (id, hostedEvents, attendedEvents, lifetimeEvents)
-                    VALUES (?, 0, 0, 0)
-                `).run(officer.member.id);
-
-                userData = {
-                    hostedEvents: 0
-                };
-
-            }
-
-            const hostedEvents =
-                userData.hostedEvents;
-
-            const requiredEvents =
-                officer.quota;
-
-            const icon =
-                hostedEvents >= requiredEvents
-                    ? "✅"
-                    : "❌";
-
-            output +=
-                `${officer.member.user.username} ${icon}  //  Hosted events: ${hostedEvents}  //  Required events: ${requiredEvents}\n`;
-
+        if (officers.length === 0) {
+            return interaction.editReply(
+                `${output}No managed Officers found.`
+            );
         }
 
-        await interaction.editReply(output);
+        for (const officer of officers) {
+            const member = await interaction.guild.members
+                .fetch(officer.discordId)
+                .catch(() => null);
 
+            const userData = db.prepare(`
+                SELECT hostedEvents
+                FROM users
+                WHERE id = ?
+            `).get(officer.discordId);
+
+            const hostedEvents = userData?.hostedEvents || 0;
+            const hasQuota = Number.isInteger(officer.quota);
+            const requiredEvents = hasQuota
+                ? officer.quota
+                : "Not set";
+            const icon = hasQuota && hostedEvents >= officer.quota
+                ? "✅"
+                : "❌";
+            const name = member?.user.username || officer.discordName;
+
+            output +=
+                `${name} ${icon}  //  Hosted events: ${hostedEvents}  //  Required events: ${requiredEvents}\n`;
+        }
+
+        await interaction.editReply(output.slice(0, 1900));
     }
-
 };

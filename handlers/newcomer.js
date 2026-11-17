@@ -1,7 +1,5 @@
-const {
-    OFFICER_ROLES,
-    NEWCOMER_ROLES
-} = require("../config/config");
+const { NEWCOMER_ROLES } = require("../config/config");
+const { hasOfficerPermission } = require("../utils/permissions");
 
 
 const {
@@ -47,13 +45,7 @@ module.exports = async function newcomer(message) {
     if (!message.content.startsWith("!newcomer")) return;
 
 
-    const hasPermission =
-        message.member.roles.cache.some(role =>
-            OFFICER_ROLES.includes(role.id)
-        );
-
-
-    if (!hasPermission) return;
+    if (!hasOfficerPermission(message.author.id)) return;
 
 
 

@@ -1,9 +1,10 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { addEvents } = require("../utils/databaseManager");
-const { OFFICER_ROLES } = require("../config/config");
-
-const ALLOWED_ROLE = "1430405883849867294";
-const ALLOWED_USER = "1221391460860035093";
+const {
+    hasOfficerPermission,
+    isOfficer,
+    isHiCOM
+} = require("../utils/permissions");
 
 module.exports = {
 
@@ -25,14 +26,7 @@ module.exports = {
 
     async execute(interaction) {
 
-        const hasPermission =
-            interaction.user.id === ALLOWED_USER ||
-            interaction.member.roles.cache.has(ALLOWED_ROLE) ||
-            interaction.member.roles.cache.some(role =>
-                OFFICER_ROLES.includes(role.id)
-            );
-
-        if (!hasPermission) {
+        if (!hasOfficerPermission(interaction.user.id)) {
             return interaction.reply({
                 content: "❌ You do not have permission.",
                 ephemeral: true
@@ -44,11 +38,10 @@ module.exports = {
 
         const member = await interaction.guild.members.fetch(user.id);
 
-        const isOfficer = member.roles.cache.some(role =>
-            OFFICER_ROLES.includes(role.id)
-        );
+        const isManagedOfficer =
+            isOfficer(user.id) || isHiCOM(user.id);
 
-        if (isOfficer) {
+        if (isManagedOfficer) {
 
             addEvents(user.id, amount, "hosted");
 
